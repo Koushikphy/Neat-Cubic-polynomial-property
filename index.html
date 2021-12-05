@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bézier Curves</title>
+    <style>
+        body,
+        html {
+            height: 99%;
+            width: 99%;
+            display: flex;
+            flex-direction: column;
+        }
+    </style>
+    <script src="https://cdn.plot.ly/plotly-2.6.3.min.js"></script>
+</head>
+
+<body>
+
+    <div id="root"></div>
+
+    <script>
+        const root = document.getElementById('root'); // plot container
+        const cubicPolynomial = (x, a, b, c) => -(x - a) * (x - b) * (x - c)
+        const grid = 75
+        const theta = linspace(0, 2 * Math.PI, 50)
+
+        // random number generator to generate number in a range
+        function linspace(start, stop, grid) {
+            var arr = new Array(grid).fill()
+            var step = (stop - start) / (grid - 1);
+            return arr.map((_, i) => start + step * i)
+        }
+
+
+        function plotTriangle() {
+            var [ax, ay] = [a, (b - c) / Math.sqrt(3) + shift]
+            var [bx, by] = [b, (c - a) / Math.sqrt(3) + shift]
+            var [cx, cy] = [c, (a - b) / Math.sqrt(3) + shift]
+            Plotly.addTraces(root, {
+                x: [ax, bx, cx, ax],
+                y: [ay, by, cy, ay]
+            })
+        }
+
+
+
+        const commonTrace = {
+            x: [],
+            y: [],
+            type: 'scatter',
+            mode: 'lines+markers',
+            opacity: 1,
+            hoverinfo: "none",
+            marker: { size: 9 }
+        }
+        Plotly.newPlot(root, [
+            { ...commonTrace, mode: 'lines', line: { color: 'black', width: 2.5 } },  // 0:cubic polynomial
+            { ...commonTrace, line: { color: '#ff7f0e', width: 2.5 } },  // 2: triangle
+            { ...commonTrace, line: { color: 'green', width: 1.5 } },  // 3: projection from triangle 1
+            { ...commonTrace, line: { color: 'green', width: 1.5 } },  // 3: projection from triangle 2
+            { ...commonTrace, line: { color: 'green', width: 1.5 } },  // 3: projection from triangle 3
+            { ...commonTrace, mode: 'lines', line: { color: '#e377c2', width: 2.5 } }, // 6 : inner circle
+            { ...commonTrace, mode: 'lines', line: { color: '#8c564b', width: 2.5 } }, //  4: outer circle
+            { ...commonTrace, line: { color: 'blue', width: 1.5 } }, // 7 : projection from inner circle
+            { ...commonTrace, line: { color: 'blue', width: 1.5 } }, // 7 : projection from inner circle
+            { ...commonTrace, line: { color: 'red', width: 1.5 } }, // 8 : point of inflection 
+
+        ], {
+            showlegend: false,
+            margin: { l: 0, r: 0, b: 0, t: 0 },
+            xaxis: {
+                // zeroline: false,
+                showline: false,
+                showgrid: false,
+                visible: false,
+                fixedrange: true,
+                range: [0, 9.3]
+            },
+            yaxis: {
+                zeroline: true,
+                showline: false,
+                showgrid: false,
+                visible: true,
+                fixedrange: true,
+                range: [-1.5, 4.5]
+            }
+        })
+
+        function reverse(array) {
+            var output = [];
+            for (var i = array.length - 1; i > -1; i--) {
+                output.push(array[i]);
+            }
+            return output;
+        }
+
+        var aa = linspace(.8, 1.1, 100)
+        var bb = linspace(1.5, 2.7, 100)
+        bb.reverse()
+        var cc = linspace(2.8, 3.1, 100)
+        var ss = linspace(2.85, 3.15, 50)
+        var ss = [...reverse(ss), ...ss]
+        var shift = 3
+        var xArr = linspace(0, 4, grid) // x axis grid
+
+        var index = 0;
+        function plotAll() {
+            // paraeters for this iteration
+            a = aa[index]
+            b = bb[index]
+            c = cc[index]
+            shift = ss[index]
+
+            var yArr = xArr.map(e => cubicPolynomial(e, a, b, c))
+
+            var [ax, ay] = [a, (b - c) / Math.sqrt(3) + shift]
+            var [bx, by] = [b, (c - a) / Math.sqrt(3) + shift]
+            var [cx, cy] = [c, (a - b) / Math.sqrt(3) + shift]
+
+            radius = Math.sqrt(a * a + b * b + c * c - a * b - b * c - c * a) / 3
+            var [cenX, cenY] = [(a + b + c) / 3, shift]
+
+            x1 = cenX + radius
+            x2 = cenX - radius
+            y1 = cubicPolynomial(x1, a, b, c)
+            y2 = cubicPolynomial(x2, a, b, c)
+
+            Plotly.restyle(root, {
+                x: [
+                    xArr,
+                    [ax, bx, cx, ax],
+                    [ax, ax],
+                    [bx, bx],
+                    [cx, cx],
+                    theta.map(e => cenX + radius * Math.cos(e)), // circle 
+                    theta.map(e => cenX + 2 * radius * Math.cos(e)), // circle
+                    [x1, x1],
+                    [x2, x2],
+                    [cenX, cenX]
+                ],
+                y: [
+                    yArr,
+                    [ay, by, cy, ay],
+                    [ay, 0],
+                    [by, 0],
+                    [cy, 0],
+                    theta.map(e => cenY + radius * Math.sin(e)),
+                    theta.map(e => cenY + 2 * radius * Math.sin(e)),
+                    [y1, shift],
+                    [y2, shift],
+                    [cubicPolynomial(cenX, a, b, c), cenY]
+                ]
+            })
+            index++
+            if (index == 100) {
+                index = 0
+                aa.reverse()
+                bb.reverse()
+                cc.reverse()
+            }
+        }
+        myTimer = setInterval(plotAll, 50)
+    </script>
+</body>
+
+</html>
